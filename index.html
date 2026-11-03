@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>生物科詞彙溫習｜英譯中選擇題</title>
+    <title>生物科詞彙溫習｜英譯中選擇題（27題模式）</title>
     <style>
         * {
             box-sizing: border-box;
@@ -26,8 +26,9 @@
             color: #224;
             font-size: 24px;
         }
-        .score-box {
-            text-align: right;
+        .info-box {
+            display: flex;
+            justify-content: space-between;
             font-size: 18px;
             margin-bottom: 16px;
             color: #333;
@@ -81,7 +82,7 @@
             background: #f8d7da;
             color: #721c24;
         }
-        #nextBtn {
+        #nextBtn, #restartBtn {
             margin-top: 20px;
             width: 100%;
             padding: 14px;
@@ -93,23 +94,37 @@
             cursor: pointer;
             display: none;
         }
-        #nextBtn:hover {
+        #nextBtn:hover, #restartBtn:hover {
             background: #2764c7;
+        }
+        .final-result {
+            text-align:center;
+            font-size:22px;
+            padding:20px;
+            display:none;
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>🧬 生物詞彙小練習（英→中）</h1>
-        <div class="score-box">得分：<span id="score">0</span></div>
+        <h1>🧬 生物詞彙小練習（英→中｜27題）</h1>
+        <div class="info-box">
+            <div>題目：<span id="qIndex">0</span> / 27</div>
+            <div>得分：<span id="score">0</span></div>
+        </div>
         <div class="question-text" id="question">loading...</div>
         <div id="optionsBox"></div>
         <div class="feedback" id="feedbackBox"></div>
+        <div class="final-result" id="resultBox">
+            <h2>✅ 完成全部27題！</h2>
+            <p>總得分：<span id="finalScore">0</span> / 27</p>
+            <button id="restartBtn">重新開始（重新打亂次序）</button>
+        </div>
         <button id="nextBtn">下一題</button>
     </div>
 
     <script>
-        // 詞庫，全部來自你提供的課本詞彙
+        // 詞庫（剛好27個詞彙）
         const wordBank = [
             {en:"organism", zh:"生物"},
             {en:"biology", zh:"生物學"},
@@ -141,27 +156,52 @@
         ];
 
         let score = 0;
-        let currentQ = null;
+        let questionQueue = [];
+        let currentIndex = 0;
         let answered = false;
 
         const questionEl = document.getElementById("question");
         const optionsBox = document.getElementById("optionsBox");
         const feedbackBox = document.getElementById("feedbackBox");
         const scoreEl = document.getElementById("score");
+        const qIndexEl = document.getElementById("qIndex");
         const nextBtn = document.getElementById("nextBtn");
+        const resultBox = document.getElementById("resultBox");
+        const finalScoreEl = document.getElementById("finalScore");
+        const restartBtn = document.getElementById("restartBtn");
 
-        // 隨機抽一題 + 產生4個選項
+        // 洗牌函數
+        function shuffle(arr){
+            const copy = [...arr];
+            for(let i = copy.length - 1; i>0; i--){
+                const j = Math.floor(Math.random()*(i+1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function startQuiz(){
+            score = 0;
+            currentIndex = 0;
+            scoreEl.innerText = score;
+            resultBox.style.display = "none";
+            nextBtn.style.display = "block";
+            // 打亂全部27題順序
+            questionQueue = shuffle(wordBank);
+            renderQuestion();
+        }
+
         function renderQuestion(){
             answered = false;
             feedbackBox.style.display = "none";
             nextBtn.style.display = "none";
             optionsBox.innerHTML = "";
 
-            // 隨機選正確題目
-            currentQ = wordBank[Math.floor(Math.random() * wordBank.length)];
+            const currentQ = questionQueue[currentIndex];
+            qIndexEl.innerText = currentIndex + 1;
             questionEl.innerText = currentQ.en;
 
-            // 撈3個其他錯誤選項
+            // 取出3個其他錯誤選項
             let wrongChoices = [];
             while(wrongChoices.length < 3){
                 const randWord = wordBank[Math.floor(Math.random() * wordBank.length)];
@@ -169,49 +209,64 @@
                     wrongChoices.push(randWord.zh);
                 }
             }
-            // 混亂排序
             const allOpt = [currentQ.zh, ...wrongChoices];
             allOpt.sort(()=> Math.random() - 0.5);
 
-            // 生成按鈕選項
             allOpt.forEach(optText => {
                 const btn = document.createElement("button");
                 btn.className = "option";
                 btn.innerText = optText;
-                btn.onclick = ()=> selectAnswer(optText, btn);
+                btn.onclick = ()=> selectAnswer(optText, btn, currentQ.zh);
                 optionsBox.appendChild(btn);
             })
         }
 
-        function selectAnswer(userPick, btn){
+        function selectAnswer(userPick, btn, correctAns){
             if(answered) return;
             answered = true;
             const allBtns = document.querySelectorAll(".option");
             allBtns.forEach(b=> b.classList.add("disabled"));
 
-            if(userPick === currentQ.zh){
-                // 答對
+            if(userPick === correctAns){
                 btn.classList.add("correct");
                 score += 1;
                 scoreEl.innerText = score;
                 feedbackBox.className = "feedback feedback-right";
                 feedbackBox.innerText = "✅ 答對啦！";
             }else{
-                // 答錯，標示正解
                 btn.classList.add("wrong");
                 allBtns.forEach(b=>{
-                    if(b.innerText === currentQ.zh) b.classList.add("correct");
+                    if(b.innerText === correctAns) b.classList.add("correct");
                 })
                 feedbackBox.className = "feedback feedback-wrong";
-                feedbackBox.innerText = `❌ 答錯了！正確答案：${currentQ.zh}`;
+                feedbackBox.innerText = `❌ 答錯了！正確答案：${correctAns}`;
             }
             feedbackBox.style.display = "block";
             nextBtn.style.display = "block";
         }
 
-        nextBtn.onclick = renderQuestion;
-        // 載入第一題
-        renderQuestion();
+        nextBtn.onclick = function(){
+            currentIndex++;
+            if(currentIndex >= questionQueue.length){
+                // 做完27題，顯示總成績
+                questionEl.style.display = "none";
+                optionsBox.style.display = "none";
+                feedbackBox.style.display = "none";
+                nextBtn.style.display = "none";
+                finalScoreEl.innerText = score;
+                resultBox.style.display = "block";
+            }else{
+                renderQuestion();
+            }
+        }
+
+        restartBtn.onclick = function(){
+            questionEl.style.display = "block";
+            optionsBox.style.display = "block";
+            startQuiz();
+        }
+
+        startQuiz();
     </script>
 </body>
 </html>
