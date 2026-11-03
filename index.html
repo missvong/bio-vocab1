@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生物科詞彙溫習｜英譯中選擇題</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, sans-serif;
+        }
+        body {
+            max-width: 700px;
+            margin: 3rem auto;
+            padding: 0 20px;
+            background-color: #f0f8ff;
+        }
+        .card {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px #00000020;
+        }
+        h1 {
+            text-align: center;
+            color: #224;
+            font-size: 24px;
+        }
+        .score-box {
+            text-align: right;
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        .question-text {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin: 24px 0;
+            color: #113;
+        }
+        .option {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            margin: 10px 0;
+            border: 2px solid #dde;
+            border-radius: 10px;
+            background: #fafafa;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .option:hover:not(.disabled) {
+            border-color: #66aaff;
+            background: #f3f8ff;
+        }
+        .option.correct {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+        .option.wrong {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+        }
+        .option.disabled {
+            pointer-events: none;
+        }
+        .feedback {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 18px;
+            display: none;
+        }
+        .feedback-right {
+            background: #d4edda;
+            color: #155724;
+        }
+        .feedback-wrong {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        #nextBtn {
+            margin-top: 20px;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: #3678e3;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: none;
+        }
+        #nextBtn:hover {
+            background: #2764c7;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🧬 生物詞彙小練習（英→中）</h1>
+        <div class="score-box">得分：<span id="score">0</span></div>
+        <div class="question-text" id="question">loading...</div>
+        <div id="optionsBox"></div>
+        <div class="feedback" id="feedbackBox"></div>
+        <button id="nextBtn">下一題</button>
+    </div>
+
+    <script>
+        // 詞庫，全部來自你提供的課本詞彙
+        const wordBank = [
+            {en:"organism", zh:"生物"},
+            {en:"biology", zh:"生物學"},
+            {en:"scientific method", zh:"科學方法"},
+            {en:"hypothesis", zh:"假說"},
+            {en:"control experiment", zh:"對照實驗"},
+            {en:"hydrolysis", zh:"水解"},
+            {en:"Benedict's test", zh:"本立德試驗"},
+            {en:"triglyceride", zh:"甘油三酯"},
+            {en:"biomolecule", zh:"生物分子"},
+            {en:"polysaccharide", zh:"多糖"},
+            {en:"polypeptide", zh:"多肽"},
+            {en:"nucleic acid", zh:"核酸"},
+            {en:"ribonucleic acid", zh:"核糖核酸"},
+            {en:"nucleotide", zh:"核苷酸"},
+            {en:"amino acid", zh:"氨基酸"},
+            {en:"lipid", zh:"脂質"},
+            {en:"deoxyribonucleic acid", zh:"脫氧核糖核酸"},
+            {en:"protein", zh:"蛋白質"},
+            {en:"monosaccharide", zh:"單糖"},
+            {en:"carbohydrate", zh:"碳水化合物"},
+            {en:"phospholipid", zh:"磷脂"},
+            {en:"condensation", zh:"縮合"},
+            {en:"cholesterol", zh:"膽固醇"},
+            {en:"reducing sugar", zh:"還原糖"},
+            {en:"disaccharide", zh:"雙糖"},
+            {en:"double helix", zh:"雙螺旋"},
+            {en:"mineral", zh:"礦物質"}
+        ];
+
+        let score = 0;
+        let currentQ = null;
+        let answered = false;
+
+        const questionEl = document.getElementById("question");
+        const optionsBox = document.getElementById("optionsBox");
+        const feedbackBox = document.getElementById("feedbackBox");
+        const scoreEl = document.getElementById("score");
+        const nextBtn = document.getElementById("nextBtn");
+
+        // 隨機抽一題 + 產生4個選項
+        function renderQuestion(){
+            answered = false;
+            feedbackBox.style.display = "none";
+            nextBtn.style.display = "none";
+            optionsBox.innerHTML = "";
+
+            // 隨機選正確題目
+            currentQ = wordBank[Math.floor(Math.random() * wordBank.length)];
+            questionEl.innerText = currentQ.en;
+
+            // 撈3個其他錯誤選項
+            let wrongChoices = [];
+            while(wrongChoices.length < 3){
+                const randWord = wordBank[Math.floor(Math.random() * wordBank.length)];
+                if(randWord.zh !== currentQ.zh && !wrongChoices.includes(randWord.zh)){
+                    wrongChoices.push(randWord.zh);
+                }
+            }
+            // 混亂排序
+            const allOpt = [currentQ.zh, ...wrongChoices];
+            allOpt.sort(()=> Math.random() - 0.5);
+
+            // 生成按鈕選項
+            allOpt.forEach(optText => {
+                const btn = document.createElement("button");
+                btn.className = "option";
+                btn.innerText = optText;
+                btn.onclick = ()=> selectAnswer(optText, btn);
+                optionsBox.appendChild(btn);
+            })
+        }
+
+        function selectAnswer(userPick, btn){
+            if(answered) return;
+            answered = true;
+            const allBtns = document.querySelectorAll(".option");
+            allBtns.forEach(b=> b.classList.add("disabled"));
+
+            if(userPick === currentQ.zh){
+                // 答對
+                btn.classList.add("correct");
+                score += 1;
+                scoreEl.innerText = score;
+                feedbackBox.className = "feedback feedback-right";
+                feedbackBox.innerText = "✅ 答對啦！";
+            }else{
+                // 答錯，標示正解
+                btn.classList.add("wrong");
+                allBtns.forEach(b=>{
+                    if(b.innerText === currentQ.zh) b.classList.add("correct");
+                })
+                feedbackBox.className = "feedback feedback-wrong";
+                feedbackBox.innerText = `❌ 答錯了！正確答案：${currentQ.zh}`;
+            }
+            feedbackBox.style.display = "block";
+            nextBtn.style.display = "block";
+        }
+
+        nextBtn.onclick = renderQuestion;
+        // 載入第一題
+        renderQuestion();
+    </script>
+</body>
+</html>
